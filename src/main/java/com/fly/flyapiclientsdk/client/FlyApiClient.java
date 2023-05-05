@@ -5,6 +5,8 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
+import com.fly.flyapiclientsdk.model.Picture;
+import com.fly.flyapiclientsdk.model.Query.PictureRequest;
 import com.fly.flyapiclientsdk.model.User;
 import com.fly.flyapiclientsdk.utils.SignUtils;
 
@@ -86,4 +88,17 @@ public class FlyApiClient {
         return "fail";
     }
 
+    public String getPicture(PictureRequest picture) throws UnsupportedEncodingException {
+        String json = JSONUtil.toJsonStr(picture);
+        HttpResponse response = HttpRequest.post(GATEWAY_HOST + "/api/picture/getPicture")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+        // System.out.println("response = " + response);
+        System.out.println("status = " + response.getStatus());
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
 }
