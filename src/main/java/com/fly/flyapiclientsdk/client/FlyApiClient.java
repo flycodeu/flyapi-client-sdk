@@ -1,6 +1,8 @@
 package com.fly.flyapiclientsdk.client;
 
+import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.URLUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
@@ -19,98 +21,276 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.fly.flyapiclientsdk.utils.SignUtils.getSign;
+
 /**
  * 调用第三方接口客户端
  */
 public class FlyApiClient {
+    // ip 39.104.23.173
+    private static final String HTTP_URL = "http://localhost:7550/api";
     private final String accessKey;
     private final String secretKey;
-    //http://47.113.144.50:8090
-    public static final String GATEWAY_HOST = "http://localhost:8090";
 
     public FlyApiClient(String accessKey, String secretKey) {
         this.accessKey = accessKey;
         this.secretKey = secretKey;
     }
 
+    // get获取名字
     public String getNameByGet(String name) {
-        HashMap<String, Object> paramMap = new HashMap<>();
-        paramMap.put("name", name);
-        String result3 = HttpUtil.get(GATEWAY_HOST + "/api/name/", paramMap);
-        System.out.println(result3);
-        return result3;
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", name);
+        String result = HttpUtil.get(HTTP_URL + "/name/", map);
+        System.out.println("get=>" + result);
+        System.out.println("");
+        return result;
     }
 
-
+    // post传参
     public String getNameByPost(String name) {
-        HashMap<String, Object> paramMap = new HashMap<>();
-        paramMap.put("name", name);
-        String result3 = HttpUtil.post(GATEWAY_HOST + "/api/name/", paramMap);
-        System.out.println(result3);
-        return result3;
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("name", name);
+        String result = HttpUtil.post(HTTP_URL + "/name/", map);
+        System.out.println("post_param=>" + result);
+        System.out.println("");
+        return result;
     }
 
-    private Map<String, String> getHeaders(String body) throws UnsupportedEncodingException {
-        Map<String, String> header = new HashMap<>();
-        header.put("accessKey", accessKey);
-        header.put("sign", SignUtils.getSign(body, secretKey));
-        // 防止中文乱码
-        header.put("body", URLEncoder.encode(body, StandardCharsets.UTF_8.name()));
-        header.put("nonce", RandomUtil.randomNumbers(5));
-        header.put("timestamp", String.valueOf(System.currentTimeMillis()));
-        return header;
+    private Map<String, String> getHeaders(String body) {
+        Map<String, String> map = new HashMap<>();
+        map.put("accessKey", accessKey);
+        // 不能直接发送给后端
+//        map.put("secretKey", secretKey);
+        map.put("nonce", RandomUtil.randomNumbers(5));
+        body = URLUtil.encode(body, CharsetUtil.CHARSET_UTF_8);
+        map.put("body", body);
+//        try {
+//            map.put("body", URLEncoder.encode(body, StandardCharsets.UTF_8.name()));
+//        } catch (UnsupportedEncodingException e) {
+//            e.printStackTrace();
+//        }
+        map.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
+        map.put("sign", getSign(body, secretKey));
+        return map;
+    }
+
+    // post传对象
+    public String getNameByPostJson(User user) {
+        String json = JSONUtil.toJsonStr(user);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/name/user")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+        System.out.println("json_user_status=>" + response.getStatus());
+        String result = response.body();
+        System.out.println("json=>" + result);
+        System.out.println("");
+        return result;
+    }
+
+
+    // get获取豆瓣热销书
+    public String getDouBanFamousBook() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/book/douban")
+                .addHeaders(getHeaders(""))
+                .execute();
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+
+    /**
+     * 获取豆瓣热门电影
+     *
+     * @return
+     */
+    public String getFilmByDouBan() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/film/douban")
+                .addHeaders(getHeaders(""))
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+
+        return "fail";
+    }
+
+
+    /**
+     * 返回名人名言
+     *
+     * @return
+     */
+    public String getFamousSayings() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/text/famous/sayings")
+                .addHeaders(getHeaders(""))
+                .execute();
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+
+    /**
+     * 返回每日一言
+     *
+     * @return
+     */
+    public String getDaySayings() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/text/day/sayings")
+                .addHeaders(getHeaders(""))
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+
+        return "fail";
+    }
+
+
+    /**
+     * 根据手机号获取地址
+     *
+     * @return
+     */
+    public String getPhoneAddress(com.flySdk.model.Request.PhoneNumRequest phoneNumRequest) {
+        String json = JSONUtil.toJsonStr(phoneNumRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/phoneAddress/zhishu")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
     }
 
     /**
-     * 获取用户姓名
-     * @param user
+     * 爬取bing随机指定图片
+     *
+     * @param randomPictureRequest
      * @return
-     * @throws UnsupportedEncodingException
      */
-    public String getNameByPostWithJson(User user) throws UnsupportedEncodingException {
-        String json = JSONUtil.toJsonStr(user);
-        HttpResponse response = HttpRequest.post(GATEWAY_HOST + "/api/name/user")
+    public String getBingRandomPicture(com.flySdk.model.Request.RandomPictureRequest randomPictureRequest) {
+        String json = JSONUtil.toJsonStr(randomPictureRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/picture/bing/randomPicture")
                 .addHeaders(getHeaders(json))
                 .body(json)
                 .execute();
-        // System.out.println("response = " + response);
-        System.out.println("status = " + response.getStatus());
-        if (response.isOk()) {
-            return response.body();
-        }
-        return "fail";
+        return response.body();
     }
 
-    public String getFunnyStory() throws UnsupportedEncodingException {
-        HttpResponse response = HttpRequest.get(GATEWAY_HOST + "/api/story/getStory")
-                .addHeaders(getHeaders(""))
-                .execute();
-        if (response.isOk()) {
-            return response.body();
-        }
-        return "fail";
-    }
-
-    public String getPicture(PictureRequest picture) throws UnsupportedEncodingException {
-        String json = JSONUtil.toJsonStr(picture);
-        HttpResponse response = HttpRequest.post(GATEWAY_HOST + "/api/picture/getPicture")
+    /**
+     * 获取简单天气
+     *
+     * @return
+     */
+    public String getSimpleWeather(com.flySdk.model.Request.WeatherRequest weatherRequest) {
+        String json = JSONUtil.toJsonStr(weatherRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/weather/localtion")
                 .addHeaders(getHeaders(json))
                 .body(json)
                 .execute();
-        // System.out.println("response = " + response);
-        System.out.println("status = " + response.getStatus());
+
         if (response.isOk()) {
             return response.body();
         }
         return "fail";
     }
 
-    public String getHot() throws UnsupportedEncodingException {
-        HttpResponse response = HttpRequest.get(GATEWAY_HOST + "/api/hot/get")
+    /**
+     * 调用博天天气API
+     *
+     * @return
+     */
+    public String getAllWeather() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/weather/botian")
                 .addHeaders(getHeaders(""))
                 .execute();
-        // System.out.println("response = " + response);
-        System.out.println("status = " + response.getStatus());
+
+        if (response.isOk()) {
+            return response.body();
+        }
+
+        return "fail";
+    }
+
+    /**
+     * 鱼聪明AI聊天
+     *
+     * @return
+     */
+    public String getYuCongMingAIChat(com.flySdk.model.Request.YuCongMingAiRequest yuCongMingAiRequest) {
+        String json = JSONUtil.toJsonStr(yuCongMingAiRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/ai/yucchat")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+    /**
+     * miniAi 接口
+     *
+     * @param yuCongMingAiRequest
+     * @return
+     */
+    public String getMiNiMaxAi(com.flySdk.model.Request.YuCongMingAiRequest yuCongMingAiRequest) {
+        String json = JSONUtil.toJsonStr(yuCongMingAiRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/ai/minimaxAi")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+    /**
+     * 返回历史上的今天
+     *
+     * @return
+     */
+    public String getHistoryToday() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/text/historyToday")
+                .addHeaders(getHeaders(""))
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+    /**
+     * 获取每日英文
+     *
+     * @return
+     */
+    public String getOneDayEnglish() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/text/englishOneDay")
+                .addHeaders(getHeaders(""))
+                .execute();
+
         if (response.isOk()) {
             return response.body();
         }
@@ -118,12 +298,54 @@ public class FlyApiClient {
     }
 
 
-    public String getAISongRecommend() throws UnsupportedEncodingException {
-        HttpResponse response = HttpRequest.get(GATEWAY_HOST + "/api/ai/chart")
+    /**
+     * 指定进制转换
+     *
+     * @param binaryConversionRequest
+     * @return
+     */
+    public String binaryConversion(com.flySdk.model.Request.BinaryConversionRequest binaryConversionRequest) {
+        String json = JSONUtil.toJsonStr(binaryConversionRequest);
+        HttpResponse response = HttpRequest
+                .post(HTTP_URL + "/binary/conversion")
+                .addHeaders(getHeaders(json))
+                .body(json)
+                .execute();
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+
+    /**
+     * 网易云热歌随机
+     *
+     * @return
+     */
+    public String wangyiyunRandomMusic() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/music/wangyiyun/rege")
                 .addHeaders(getHeaders(""))
                 .execute();
-        // System.out.println("response = " + response);
-        System.out.println("status = " + response.getStatus());
+
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+
+    /**
+     * 快手热搜
+     *
+     * @return
+     */
+    public String getKuaiShouReSou() {
+        HttpResponse response = HttpRequest.get(HTTP_URL + "/resou/kuaishou")
+                .addHeaders(getHeaders(""))
+                .execute();
+
         if (response.isOk()) {
             return response.body();
         }
