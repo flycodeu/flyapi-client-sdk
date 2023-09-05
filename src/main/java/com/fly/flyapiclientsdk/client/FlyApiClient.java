@@ -7,7 +7,9 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import com.fly.flyapiclientsdk.model.Picture;
 import com.fly.flyapiclientsdk.model.Query.PictureRequest;
+import com.fly.flyapiclientsdk.model.Query.WeboHotRequest;
 import com.fly.flyapiclientsdk.model.User;
+import com.fly.flyapiclientsdk.model.WeboHot;
 import com.fly.flyapiclientsdk.utils.SignUtils;
 
 
@@ -21,8 +23,9 @@ import java.util.Map;
  * 调用第三方接口客户端
  */
 public class FlyApiClient {
-    private String accessKey;
-    private String secretKey;
+    private final String accessKey;
+    private final String secretKey;
+    //http://47.113.144.50:8090
     public static final String GATEWAY_HOST = "http://localhost:8090";
 
     public FlyApiClient(String accessKey, String secretKey) {
@@ -93,6 +96,31 @@ public class FlyApiClient {
         HttpResponse response = HttpRequest.post(GATEWAY_HOST + "/api/picture/getPicture")
                 .addHeaders(getHeaders(json))
                 .body(json)
+                .execute();
+        // System.out.println("response = " + response);
+        System.out.println("status = " + response.getStatus());
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+    public String getHot() throws UnsupportedEncodingException {
+        HttpResponse response = HttpRequest.get(GATEWAY_HOST + "/api/hot/get")
+                .addHeaders(getHeaders(""))
+                .execute();
+        // System.out.println("response = " + response);
+        System.out.println("status = " + response.getStatus());
+        if (response.isOk()) {
+            return response.body();
+        }
+        return "fail";
+    }
+
+
+    public String getAISongRecommend() throws UnsupportedEncodingException {
+        HttpResponse response = HttpRequest.get(GATEWAY_HOST + "/api/ai/chart")
+                .addHeaders(getHeaders(""))
                 .execute();
         // System.out.println("response = " + response);
         System.out.println("status = " + response.getStatus());
